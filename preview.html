@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>性能检测报告</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />
+  <style>
+    body { padding: 0; margin: 0; }
+    #app { color: #303133; width: 100%; min-width: 1366px; overflow-x: hidden; }
+    #app .section { width: 100%; padding: 10px 20px; border: 1px solid #eee; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div id="app" class="content">
+    <section class="section">
+      <h3>
+        <span style="color: #409eff">{{ type }}</span>
+        性能检测结果
+      </h3>
+    </section>
+
+    <div style="margin: 0px 20px">
+      <el-row gutter="20">
+        <el-col span="6">测试页面个数：<span style="color: #409eff">{{ pageCount }}</span></el-col>
+        <el-col span="6">总耗时：<span style="color: #67c23a">{{ totalTime }}s</span></el-col>
+      </el-row>
+    </div>
+
+    <div style="margin: 40px 20px">
+      <el-table :data="tableData" border style="width: 100%">
+        <el-table-column prop="url" label="测试链接地址">
+          <template slot-scope="{ row }">
+            <a target="_blank" :href="row.url">{{row.url}}</a>
+          </template>
+        </el-table-column>
+        <el-table-column prop="fcp" label="FCP"> </el-table-column>
+        <el-table-column prop="tti" label="TTI"> </el-table-column>
+        <el-table-column prop="numRequests" label="请求总数"> </el-table-column>
+        <el-table-column prop="totalByteWeight" label="传输资源体积"> </el-table-column>
+        <el-table-column prop="networkWeight" label="加载资源体积"> </el-table-column>
+        <el-table-column prop="totalTaskTime" label="资源加载时长"> </el-table-column>
+        <el-table-column prop="averageRate" label="TTI/资源加载时长"> </el-table-column>
+        <el-table-column prop="id" label="报告详情">
+          <template v-slot:default="slotProps">
+            <el-button @click.native.prevent="openRow(slotProps.row.id)" type="text" size="small"> 查看报告详情 </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.min.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="dataInfo.js"></script>
+  <script>
+    const { pages = [], pageCount, totalTime, outDir, type } = window.dataInfo;
+
+    const listData = pages.map((item) => {
+      const fcp = item.data.find((item) => item.id === 'FirstContentfulPaint');
+      const si = item.data.find((item) => item.id === 'SpeedIndex');
+      const lcp = item.data.find((item) => item.id === 'LargestContentfulPaint');
+      const cls = item.data.find((item) => item.id === 'CumulativeLayoutShift');
+      const tti = item.data.find((item) => item.id === 'TimetoInteractive');
+      const dgs = item.data.find((item) => item.id === 'Diagnostics');
+      const ntr = item.data.find((item) => item.id === 'NetworkRequests');
+      const { items } = dgs?.displayValue;
+      const weightNetwork = ntr?.displayValue?.items || [];
+
+      const { numRequests, numScripts, numTasksOver500ms, maxRtt, totalByteWeight, totalTaskTime } = items[0];
+
+      let ttiValue = 0;
+      if (tti.displayValue) {
+        const ttiArr = tti.displayValue.split(' ');
+        ttiValue = ttiArr[0];
+      }
+
+      let averageRate = '0s/k';
+      if (ttiValue && totalByteWeight) {
+        if (totalByteWeight > 1048576) {
+          averageRate = (totalByteWeight / 1048576 / Number(ttiValue)).toFixed(3) + 's/M';
+        } else {
+          averageRate = (totalByteWeight / 1024 / Number(ttiValue)).toFixed(3) + 's/k';
+        }
+      }
+
+      let totalWeight = '0k';
+      if(totalByteWeight) {
+        if(totalByteWeight > 1024) {
+          if(totalByteWeight > 1048576) {
+            totalWeight = (totalByteWeight / 1048576).toFixed(3) + 'M';
+          } else {
+            totalWeight = (totalByteWeight / 1024).toFixed(3) + 'k';
+          }
+        } else {
+          totalWeight = `${totalByteWeight}b`;
+        }
+
+      }
+
+      let allNetworkWeight = 0;
+      if(weightNetwork.length) {
+        weightNetwork.forEach(item => {
+          allNetworkWeight += item.resourceSize;
+        })
+      }
+
+      return {
+        id: item.id,
+        url: item.url,
+        fcp: fcp.displayValue || 0,
+        tti: tti.displayValue ? `${ttiValue}s` : '0s',
+        numRequests: numRequests || 0,
+        numScripts: numScripts || 0,
+        numTasksOver500ms: numTasksOver500ms || 0,
+        maxRtt: maxRtt || 0,
+        totalByteWeight: totalWeight,
+        networkWeight: allNetworkWeight ? (allNetworkWeight / 1024 / 1024).toFixed(3)+'M' : '0k',
+        totalTaskTime: totalTaskTime ? (totalTaskTime / 1000).toFixed(2) + 's' : '0s',
+        averageRate: averageRate || 0,
+      };
+    });
+
+    new Vue({
+      el: '#app',
+      data: {
+        tableData: listData,
+        pageCount,
+        totalTime,
+        outDir,
+        type,
+      },
+      methods: {
+        openRow(id) {
+          window.open(`./pages/${id}.html`);
+        },
+      },
+    });
+  </script>
+</body>
+</html>
