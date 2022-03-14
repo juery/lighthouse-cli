@@ -4,7 +4,7 @@ export const outPutInfo = {
   settings: {
     // 自定义设置属性
     formFactor: 'desktop', // 类型 mobile ｜ desktop
-    locale: 'zh', // 语言
+    // locale: 'zh', // 语言
     screenEmulation: {
       // 类型对应尺寸等参数
       mobile: false,

@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 
 export const browser = puppeteer.launch({
-  headless: false, // 是否无头模式
+  headless: true, // 是否无头模式
   // devtools: true, // 调试工具
   args: [`--remote-debugging-port=8041`],
   defaultViewport: {
